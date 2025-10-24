@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+get_leading_key() {
+    jq -r 'keys[0]' "$1"
+}
+
+lookup_get_filter() {
+    jq -r --arg KEY "$1" '.[$KEY]?.filter // empty' <<<"$2"
+}
+
+lookup_get_fields() {
+    jq -r --arg KEY "$1" '.[$KEY]?.fields?.[]? // empty' <<<"$2"
+}
+
+filter_fields() {
+    if [ $# -ne 0 ]; then
+        dsv --pretty cut "$@"
+    else
+        dsv --pretty
+    fi
+}
+
+TMP_FILES=()
+
+cleanup() {
+    for f in "${TMP_FILES[@]}"; do
+        rm -f "$f"
+    done
+}
+
+trap cleanup EXIT
+
+initial_response=$(mktemp)
+TMP_FILES+=("$initial_response")
+cat >"$initial_response"
+
+key=$(get_leading_key "$initial_response")
+
+config=$(yq -r '.' "$(dirname "${BASH_SOURCE[0]}")/config.yaml")
+filter=$(lookup_get_filter "$key" "$config")
+
+if [ -z "$filter" ]; then
+    filter="map(arrays | .[])[]"
+fi
+
+readarray -t fields < <(lookup_get_fields "$key" "$config")
+
+jq "$filter" "$initial_response" |
+    jq 'walk(if . == "" or . == [] then empty else . end)' |
+    dsv fromjson |
+    filter_fields "${fields[@]}"
