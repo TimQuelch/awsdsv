@@ -38,7 +38,8 @@ cat >"$initial_response"
 
 key=$(get_leading_key "$initial_response")
 
-config=$(yq -r '.' "$(dirname "${BASH_SOURCE[0]}")/config.yaml")
+SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+config=$(yq -r '.' "${CONFIG_FILE:-$SCRIPT_DIR/config.yaml}")
 filter=$(lookup_get_filter "$key" "$config")
 
 if [ -z "$filter" ]; then
