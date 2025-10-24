@@ -49,6 +49,6 @@ fi
 readarray -t fields < <(lookup_get_fields "$key" "$config")
 
 jq "$filter" "$initial_response" |
-    jq 'walk(if . == "" or . == [] then empty else . end)' |
+    jq 'walk(if . == "" or . == [] then empty else . end) | . + (.Tags // [] | map({("tag:" + .Key): .Value}) | add) | del(.Tags)' |
     dsv fromjson |
     filter_fields "${fields[@]}"

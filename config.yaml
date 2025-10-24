@@ -1,5 +1,5 @@
 Functions:
-  filter: .Functions[] | (. + .VpcConfig)
+  filter: .Functions[] | (. + .VpcConfig) | del(.VpcConfig)
   fields:
     - FunctionName
     - Runtime
@@ -12,15 +12,11 @@ Functions:
     - VpcId
     - SubnetIds
 Reservations:
-  filter: >-
-    .Reservations[] |
-    .OwnerId as $OwnerId |
-    .Instances[] |
-    (. + { $OwnerId, Name: (.Tags[] | select(.Key == "Name") | .Value) })
+  filter: .Reservations[] | .OwnerId as $OwnerId | .Instances[] | (. + { $OwnerId })
   fields:
     - OwnerId
     - InstanceId
-    - Name
+    - tag:Name
     - ImageId
     - InstanceId
     - IntanceType
@@ -31,3 +27,35 @@ Reservations:
     - VpcId
     - PublicIpAddress
     - PrivateIpAddress
+Vpcs:
+  filter: .Vpcs[] | (. + .BlockPublicAccessStates) | del(.BlockPublicAccessStates)
+  fields:
+    - VpcId
+    - tag:Name
+    - CidrBlock
+    - IsDefault
+    - State
+    - DhcpOptionsId
+Subnets:
+  filter: >-
+    .Subnets[] |
+    (. + .PrivateDnsNameOptionsOnLaunch + .BlockPublicAccessStates) |
+    del(.PrivateDnsNameOptionsOnLaunch) | del(.BlockPublicAccessStates)
+  fields:
+    - SubnetId
+    - tag:Name
+    - VpcId
+    - CidrBlock
+    - AvailableIpAddressCount
+    - AvailabilityZone
+VpcEndpoints:
+  fields:
+    - VpcEndpointId
+    - tag:Name
+    - VpcEndpointType
+    - VpcId
+    - ServiceName
+    - PrivateDnsEnabled
+    - OwnerId
+ProductViewDetails: # servicecatalog search-products-as-admin
+  filter: .ProductViewDetails[] | (. + .ProductViewSummary) | del(.ProductViewSummary)
