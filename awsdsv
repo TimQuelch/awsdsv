@@ -131,7 +131,7 @@ base_filter='walk(if . == "" or . == [] then empty else . end) | . + (.Tags // [
 if [[ "$query_arg_set" == 0 ]]; then
     jq "$filter" "$initial_response" |
         jq "$base_filter" |
-        dsv fromjson |
+        dsv fromjson -s |
         filter_fields "${all_fields[@]}"
 else
     jq -n \
