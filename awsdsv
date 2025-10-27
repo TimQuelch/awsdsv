@@ -2,8 +2,17 @@
 
 set -euo pipefail
 
-if ! PARSED=$(getopt -o "-j:f::a:q" --long filter:,fields::,add:,query -n "awsdsv" -- "$@"); then
-    echo "Usage: $0 [-j|--filter arg] [-f|--fields args...] [-a|--add args...] [ -q|--query ]"
+help() {
+    echo "Usage: awsdsv [-h|--help] [-j|--filter arg] [-f|--fields args...] [-a|--add args...] [ -q|--query ]"
+    echo "-h,--help            Display this help"
+    echo "-j,--filter arg      Override the jq filter used"
+    echo "-f,--fields args...  Select the fields to display. Specify with no args to clear the default config"
+    echo "-a,--add args...     Select additional fields to the default fields"
+    echo "-q,--query           Display resolved configuraiton"
+}
+
+if ! PARSED=$(getopt -o "-hj:f::a:q" --long help,filter:,fields::,add:,query -n "awsdsv" -- "$@"); then
+    help
     exit 1
 fi
 
@@ -17,6 +26,10 @@ query_arg_set=0
 
 while true; do
     case "$1" in
+    -h | --help)
+        help
+        exit
+        ;;
     -j | --filter)
         shift
         filter="$1"
@@ -123,6 +136,8 @@ if [[ "$query_arg_set" == 0 ]]; then
 else
     jq -n \
         --arg filter "$filter" \
+        --argjson top_level_keys \
+        "$(jq "keys" "$initial_response")" \
         --argjson configured_fields \
         "$(echo "${fields[@]}" | jq -R 'if . == "" then empty else . end' | jq -s)" \
         --argjson additional_fields \
