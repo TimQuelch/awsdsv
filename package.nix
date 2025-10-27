@@ -37,7 +37,7 @@ stdenv.mkDerivation {
       cp config.yaml $out/share/awsdsv/
 
       wrapProgram $out/bin/awsdsv \
-        --set CONFIG_FILE "$out/share/awsdsv/config.yaml" \
+        --set AWSDSV_CONFIG_FILE "$out/share/awsdsv/config.yaml" \
         --prefix PATH : ${binPath}
     '';
 }
