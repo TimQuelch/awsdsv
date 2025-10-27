@@ -1,0 +1,33 @@
+Functions:
+  filter: .Functions[] | (. + .VpcConfig)
+  fields:
+    - FunctionName
+    - Runtime
+    - MemorySize
+    - CodeSize
+    - PackageType
+    - LastModified
+    - Handler
+    - Role
+    - VpcId
+    - SubnetIds
+Reservations:
+  filter: >-
+    .Reservations[] |
+    .OwnerId as $OwnerId |
+    .Instances[] |
+    (. + { $OwnerId, Name: (.Tags[] | select(.Key == "Name") | .Value) })
+  fields:
+    - OwnerId
+    - InstanceId
+    - Name
+    - ImageId
+    - InstanceId
+    - IntanceType
+    - KeyName
+    - LaunchTime
+    - PlatformDetails
+    - SubnetId
+    - VpcId
+    - PublicIpAddress
+    - PrivateIpAddress
