@@ -3,15 +3,16 @@
 set -euo pipefail
 
 help() {
-    echo "Usage: awsdsv [-h|--help] [-j|--filter arg] [-f|--fields args...] [-a|--add args...] [ -q|--query ]"
+    echo "Usage: awsdsv [-h|--help] [-j|--filter arg] [-f|--fields args...] [-a|--add args...] [ -q|--query ] [-s|--squash]"
     echo "-h,--help            Display this help"
     echo "-j,--filter arg      Override the jq filter used"
     echo "-f,--fields args...  Select the fields to display. Specify with no args to clear the default config"
     echo "-a,--add args...     Select additional fields to the default fields"
-    echo "-q,--query           Display resolved configuraiton"
+    echo "-q,--query           Display resolved configuration"
+    echo "-s,--squash          Squash JSON result"
 }
 
-if ! PARSED=$(getopt -o "-hj:f::a:q" --long help,filter:,fields::,add:,query -n "awsdsv" -- "$@"); then
+if ! PARSED=$(getopt -o "-hj:f::a:qs" --long help,filter:,fields::,add:,query,squash -n "awsdsv" -- "$@"); then
     help
     exit 1
 fi
@@ -56,6 +57,10 @@ while true; do
         ;;
     -q | --query)
         query_arg_set=1
+        shift
+        ;;
+    -s | --squash)
+        squash_arg_set=1
         shift
         ;;
     --)
@@ -131,18 +136,22 @@ base_filter='walk(if . == "" or . == [] then empty else . end) | . + (.Tags // [
 if [[ "$query_arg_set" == 0 ]]; then
     jq "$filter" "$initial_response" |
         jq "$base_filter" |
-        dsv fromjson -s |
+        dsv fromjson --slurp ${squash_arg_set:+--flatten} |
         filter_fields "${all_fields[@]}"
 else
+    filtered_response="$(jq "$filter" "$initial_response" | jq "$base_filter")"
+    array_or_empty() { jq -R 'if . == "" then empty else . end' | jq -s; }
     jq -n \
         --arg filter "$filter" \
         --argjson top_level_keys \
         "$(jq "keys" "$initial_response")" \
         --argjson configured_fields \
-        "$(echo "${fields[@]}" | jq -R 'if . == "" then empty else . end' | jq -s)" \
+        "$(printf "%s\n" "${fields[@]}" | array_or_empty)" \
         --argjson additional_fields \
-        "$(echo "${additional_fields[@]}" | jq -R 'if . == "" then empty else . end' | jq -s)" \
+        "$(printf "%s\n" "${additional_fields[@]}" | array_or_empty)" \
         --argjson available_fields \
-        "$(jq "$filter" "$initial_response" | jq "$base_filter" | jq -rs 'map(keys) | flatten | unique')" \
+        "$(<<<"$filtered_response" jq -rs 'map(keys) | flatten | unique')" \
+        --argjson available_squashed_fields \
+        "$(<<<"$filtered_response" jq -rs 'map(paths | join(".")) | unique')" \
         '$ARGS.named'
 fi
